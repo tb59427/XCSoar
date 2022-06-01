@@ -26,6 +26,7 @@ Copyright_License {
 
 #include "Canvas.hpp"
 #include "Math/Point2D.hpp"
+#include "ui/opengl/Features.hpp" // for SOFTWARE_ROTATE_DISPLAY
 
 #include <glm/mat4x4.hpp>
 
@@ -42,15 +43,17 @@ class GLRenderBuffer;
  * An off-screen #Canvas implementation.
  */
 class BufferCanvas : public Canvas {
+  static constexpr GLint INTERNAL_FORMAT = GL_RGB;
+  static constexpr GLint FORMAT = GL_RGB;
+  static constexpr GLint TYPE = GL_UNSIGNED_BYTE;
+
   GLTexture *texture = nullptr;
 
   GLFrameBuffer *frame_buffer = nullptr;
 
   GLRenderBuffer *stencil_buffer = nullptr;
 
-#ifdef HAVE_GLES
   GLint old_viewport[4];
-#endif
 
   glm::mat4 old_projection_matrix;
 

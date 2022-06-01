@@ -1,9 +1,9 @@
 name-to-bin = $(patsubst %,$(TARGET_BIN_DIR)/%$(TARGET_EXEEXT),$(1))
 
 MORE_SCREEN_SOURCES = \
+	$(TEST_SRC_DIR)/FakeLogFile.cpp \
 	$(SRC)/Look/FontDescription.cpp \
 	$(SRC)/Screen/Layout.cpp \
-	$(SRC)/Hardware/DisplaySize.cpp \
 	$(SRC)/Hardware/DisplayDPI.cpp
 ifeq ($(TARGET_IS_KOBO),y)
 MORE_SCREEN_SOURCES += \
@@ -724,7 +724,7 @@ DEBUG_PROGRAM_NAMES = \
 	FlightTable \
 	BenchmarkProjection \
 	BenchmarkFAITriangleSector \
-	DumpTextFile DumpTextZip DumpTextInflate WriteTextFile RunTextWriter \
+	DumpTextFile DumpTextZip DumpTextInflate \
 	DumpHexColor \
 	RunXMLParser \
 	ReadMO \
@@ -934,22 +934,10 @@ $(eval $(call link-program,DumpHexColor,DUMP_HEX_COLOR))
 DEBUG_DISPLAY_SOURCES = \
 	$(SRC)/Hardware/DisplayDPI.cpp \
 	$(TEST_SRC_DIR)/FakeAsset.cpp \
+	$(TEST_SRC_DIR)/FakeLogFile.cpp \
 	$(TEST_SRC_DIR)/DebugDisplay.cpp
-DEBUG_DISPLAY_DEPENDS = IO
-ifeq ($(USE_X11),y)
-DEBUG_DISPLAY_DEPENDS += EVENT
-endif
+DEBUG_DISPLAY_DEPENDS = SCREEN IO OS MATH UTIL
 $(eval $(call link-program,DebugDisplay,DEBUG_DISPLAY))
-
-WRITE_TEXT_FILE_SOURCES = \
-	$(TEST_SRC_DIR)/WriteTextFile.cpp
-WRITE_TEXT_FILE_DEPENDS = IO UTIL
-$(eval $(call link-program,WriteTextFile,WRITE_TEXT_FILE))
-
-RUN_TEXT_WRITER_SOURCES = \
-	$(TEST_SRC_DIR)/RunTextWriter.cpp
-RUN_TEXT_WRITER_DEPENDS = IO UTIL
-$(eval $(call link-program,RunTextWriter,RUN_TEXT_WRITER))
 
 DOWNLOAD_FILE_SOURCES = \
 	$(SRC)/Version.cpp \
@@ -2327,12 +2315,14 @@ RUN_PROFILE_LIST_DIALOG_DEPENDS = PROFILE FORM WIDGET DATA_FIELD SCREEN EVENT RE
 $(eval $(call link-program,RunProfileListDialog,RUN_PROFILE_LIST_DIALOG))
 
 PLAY_TONE_SOURCES = \
+	$(SRC)/Hardware/DisplayDPI.cpp \
 	$(TEST_SRC_DIR)/FakeLogFile.cpp \
 	$(TEST_SRC_DIR)/PlayTone.cpp
 PLAY_TONE_DEPENDS = AUDIO MATH SCREEN EVENT ASYNC THREAD OS IO UTIL
 $(eval $(call link-program,PlayTone,PLAY_TONE))
 
 PLAY_VARIO_SOURCES = \
+	$(SRC)/Hardware/DisplayDPI.cpp \
 	$(DEBUG_REPLAY_SOURCES) \
 	$(TEST_SRC_DIR)/FakeLogFile.cpp \
 	$(TEST_SRC_DIR)/PlayVario.cpp
@@ -2397,7 +2387,9 @@ $(eval $(call link-program,RunTaskEditorDialog,RUN_TASK_EDITOR_DIALOG))
 TEST_NOTIFY_SOURCES = \
 	$(SRC)/Hardware/CPU.cpp \
 	$(SRC)/ui/event/Idle.cpp \
+	$(SRC)/Hardware/DisplayDPI.cpp \
 	$(TEST_SRC_DIR)/FakeAsset.cpp \
+	$(TEST_SRC_DIR)/FakeLogFile.cpp \
 	$(TEST_SRC_DIR)/tap.c \
 	$(TEST_SRC_DIR)/TestNotify.cpp
 TEST_NOTIFY_DEPENDS = EVENT SCREEN MATH ASYNC OS IO THREAD UTIL

@@ -25,6 +25,7 @@ Copyright_License {
 #include "Interface.hpp"
 #include "Components.hpp"
 #include "DataGlobals.hpp"
+#include "ui/canvas/Features.hpp" // for SOFTWARE_ROTATE_DISPLAY
 #include "Profile/Profile.hpp"
 #include "Profile/Current.hpp"
 #include "Profile/Settings.hpp"
@@ -73,6 +74,7 @@ Copyright_License {
 #include "io/async/GlobalAsioThread.hpp"
 #include "net/http/Init.hpp"
 #include "net/http/DownloadManager.hpp"
+#include "net/client/tim/Glue.hpp"
 #include "Hardware/DisplayDPI.hpp"
 #include "Hardware/DisplayGlue.hpp"
 #include "util/Compiler.h"
@@ -223,12 +225,11 @@ try {
 
 /**
  * "Boots" up XCSoar
- * @param hInstance Instance handle
  * @param lpCmdLine Command line string
  * @return True if bootup successful, False otherwise
  */
 bool
-Startup()
+Startup(UI::Display &display)
 {
   VerboseOperationEnvironment operation;
   operation.SetProgressRange(1024);
@@ -250,12 +251,13 @@ Startup()
 #endif
 
   MainWindow *const main_window = CommonInterface::main_window =
-    new MainWindow();
+    new MainWindow(display);
   main_window->Create(SystemWindowSize(), style);
   if (!main_window->IsDefined())
     return false;
 
-  LogFormat("Display dpi=%u,%u", Display::GetXDPI(), Display::GetYDPI());
+  LogFormat("Display dpi=%u,%u",
+            Display::GetDPI(display).x, Display::GetDPI(display).y);
 
 #ifdef ENABLE_OPENGL
   LogFormat("OpenGL: "
@@ -319,8 +321,11 @@ Startup()
   CreateDataPath();
 
 #ifdef ANDROID
-  native_view->AcquireWakeLock();
-  native_view->SetFullScreen(ui_settings.display.full_screen);
+  {
+    const auto env = Java::GetEnv();
+    native_view->AcquireWakeLock(env);
+    native_view->SetFullScreen(env, ui_settings.display.full_screen);
+  }
 #endif
 
   Display::LoadOrientation(operation);
@@ -352,6 +357,7 @@ Startup()
   main_window->LoadTerrain();
 
   logger = new Logger();
+  nmea_logger = new NMEALogger();
 
   glide_computer = new GlideComputer(computer_settings,
                                      way_points, airspace_database,
@@ -378,6 +384,7 @@ Startup()
   gp = GlidePolar(0);
   gp.SetMC(computer_settings.task.safety_mc);
   gp.SetBugs(computer_settings.polar.degradation_factor);
+  gp.SetCrewMass(computer_settings.logger.crew_mass_template);
   PlaneGlue::FromProfile(CommonInterface::SetComputerSettings().plane,
                          Profile::map);
   PlaneGlue::Synchronize(computer_settings.plane,
@@ -508,7 +515,7 @@ Startup()
   }
 
   if (computer_settings.logger.enable_nmea_logger)
-    NMEALogger::enabled = true;
+    nmea_logger->Enable();
 
   LogFormat("ProgramStarted");
 
@@ -529,6 +536,12 @@ Startup()
   if (map_window != nullptr)
     map_window->SetSkyLinesData(&tracking->GetSkyLinesData());
 #endif
+#endif
+
+#ifdef HAVE_HTTP
+  tim_glue = new TIM::Glue(*Net::curl);
+  if (map_window != nullptr)
+    map_window->SetThermalInfoMap(tim_glue);
 #endif
 
   assert(!global_running);
@@ -666,7 +679,8 @@ Shutdown()
   // Close any device connections
   devShutdown();
 
-  NMEALogger::Shutdown();
+  delete nmea_logger;
+  nmea_logger = nullptr;
 
   delete replay;
   replay = nullptr;
@@ -688,6 +702,11 @@ Shutdown()
 #ifdef HAVE_NOAA
   delete noaa_store;
   noaa_store = nullptr;
+#endif
+
+#ifdef HAVE_HTTP
+  delete tim_glue;
+  tim_glue = nullptr;
 #endif
 
 #ifdef HAVE_TRACKING

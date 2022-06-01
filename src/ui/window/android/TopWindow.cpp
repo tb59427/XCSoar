@@ -25,21 +25,19 @@ Copyright_License {
 #include "ui/canvas/custom/Cache.hpp"
 #include "ui/canvas/custom/TopCanvas.hpp"
 #include "ui/event/Queue.hpp"
-#include "ui/event/android/Loop.hpp"
 #include "ui/event/Globals.hpp"
 #include "Android/Main.hpp"
 #include "Android/NativeView.hpp"
-#include "util/ScopeExit.hxx"
+#include "LogFile.hpp"
 
 #include <cassert>
 
-
 namespace UI {
 
-void
-TopWindow::Invalidate() noexcept
+TopWindow::TopWindow(UI::Display &_display) noexcept
+  :display(_display)
 {
-  invalidated = true;
+  native_view->SetPointer(Java::GetEnv(), this);
 }
 
 void
@@ -60,16 +58,18 @@ TopWindow::ResumeSurface() noexcept
 
   assert(paused);
 
-  if (!native_view->initSurface())
-    /* failed - retry later */
+  try {
+    if (!screen->AcquireSurface())
+      return false;
+  } catch (...) {
+    LogError(std::current_exception(), "Failed to initialize GL surface");
     return false;
+  }
+
+  assert(screen->IsReady());
 
   paused = false;
   resumed = false;
-
-  screen->Resume();
-
-  surface_valid = true;
 
   RefreshSize();
 
@@ -79,7 +79,7 @@ TopWindow::ResumeSurface() noexcept
 bool
 TopWindow::CheckResumeSurface() noexcept
 {
-  return (!resumed || ResumeSurface()) && !paused && surface_valid;
+  return (!resumed || ResumeSurface()) && !paused && screen->IsReady();
 }
 
 void
@@ -117,9 +117,9 @@ TopWindow::OnPause() noexcept
 
   TextCache::Flush();
 
-  surface_valid = false;
+  screen->ReleaseSurface();
 
-  native_view->deinitSurface();
+  assert(!screen->IsReady());
 
   const std::lock_guard<Mutex> lock(paused_mutex);
   paused = true;
@@ -150,7 +150,7 @@ void
 TopWindow::Pause() noexcept
 {
   event_queue->Purge(match_pause_and_resume, nullptr);
-  event_queue->Push(Event::PAUSE);
+  event_queue->Inject(Event::PAUSE);
 
   std::unique_lock<Mutex> lock(paused_mutex);
   paused_cond.wait(lock, [this]{ return !running || paused; });
@@ -160,7 +160,7 @@ void
 TopWindow::Resume() noexcept
 {
   event_queue->Purge(match_pause_and_resume, nullptr);
-  event_queue->Push(Event::RESUME);
+  event_queue->Inject(Event::RESUME);
 }
 
 bool
@@ -212,7 +212,7 @@ TopWindow::OnEvent(const Event &event)
     return OnMultiTouchUp();
 
   case Event::RESIZE:
-    if (!surface_valid)
+    if (!screen->IsReady())
       /* postpone the resize if we're paused; the real resize will be
          handled by TopWindow::refresh() as soon as XCSoar is
          resumed */
@@ -257,28 +257,6 @@ TopWindow::EndRunning() noexcept
   /* wake up the Android Activity thread, just in case it's waiting
      inside Pause() */
   paused_cond.notify_one();
-}
-
-int
-TopWindow::RunEventLoop() noexcept
-{
-  BeginRunning();
-  AtScopeExit(this) { EndRunning(); };
-
-  Refresh();
-
-  EventLoop loop(*event_queue, *this);
-  Event event;
-  while (IsDefined() && loop.Get(event))
-    loop.Dispatch(event);
-
-  return 0;
-}
-
-void
-TopWindow::PostQuit() noexcept
-{
-  event_queue->Quit();
 }
 
 } // namespace UI

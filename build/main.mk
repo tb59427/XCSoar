@@ -228,6 +228,7 @@ XCSOAR_SOURCES := \
 	$(SRC)/Atmosphere/AirDensity.cpp \
 	$(SRC)/Atmosphere/CuSonde.cpp \
 	$(SRC)/Cloud/weglide/WeGlideSettings.cpp \
+	$(SRC)/contest/weglide/UploadIGCFile.cpp \
 	$(SRC)/Plane/PlaneGlue.cpp \
 	$(SRC)/Plane/PlaneFileGlue.cpp \
 	$(SRC)/FLARM/FlarmId.cpp \
@@ -444,12 +445,12 @@ XCSOAR_SOURCES := \
 	$(SRC)/Hardware/CPU.cpp \
 	$(SRC)/Hardware/RotateDisplay.cpp \
 	$(SRC)/Hardware/DisplayDPI.cpp \
-	$(SRC)/Hardware/DisplaySize.cpp \
 	$(SRC)/Hardware/DisplayGlue.cpp \
 	$(SRC)/Hardware/Vibrator.cpp \
 	$(SRC)/Language/MOFile.cpp \
 	$(SRC)/Language/Language.cpp \
 	$(SRC)/Language/LanguageGlue.cpp \
+	$(SRC)/Language/Table.cpp \
 	$(SRC)/LocalPath.cpp \
 	$(SRC)/UIActions.cpp \
 	$(SRC)/Interface.cpp \
@@ -663,6 +664,9 @@ XCSOAR_SOURCES += \
 endif
 
 XCSOAR_SOURCES += \
+	$(SRC)/net/client/tim/Client.cpp \
+	$(SRC)/net/client/tim/Glue.cpp \
+	$(SRC)/Cloud/weglide/UploadFlight.cpp \
 	$(SRC)/Tracking/SkyLines/Client.cpp \
 	$(SRC)/Tracking/SkyLines/Assemble.cpp \
 	$(SRC)/Tracking/SkyLines/Key.cpp \
@@ -690,6 +694,7 @@ XCSOAR_DEPENDS = \
 	LUA \
 	SHAPELIB ZZIP \
 	OPERATION \
+	JSON \
 	LIBNET TIME OS THREAD \
 	UTIL GEO MATH
 

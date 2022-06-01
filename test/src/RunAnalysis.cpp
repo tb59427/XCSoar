@@ -87,8 +87,8 @@ dlgStatusShowModal(int page)
 }
 
 void
-ConditionMonitorsUpdate(const NMEAInfo &basic, const DerivedInfo &calculated,
-                        const ComputerSettings &settings)
+ConditionMonitors::Update(const NMEAInfo &basic, const DerivedInfo &calculated,
+                          const ComputerSettings &settings) noexcept
 {
 }
 
@@ -147,7 +147,7 @@ ParseCommandLine(Args &args)
 }
 
 static void
-Main()
+Main(UI::Display &display)
 {
   const Waypoints way_points;
 
@@ -188,7 +188,7 @@ Main()
   LoadReplay(replay, glide_computer, blackboard);
   delete replay;
 
-  UI::SingleWindow main_window;
+  UI::SingleWindow main_window{display};
   main_window.Create(_T("RunAnalysis"),
                      {640, 480});
 

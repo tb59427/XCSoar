@@ -29,6 +29,8 @@ Copyright_License {
 #include "ui/event/KeyCode.hpp"
 #include "Asset.hpp"
 
+#include <algorithm>
+
 ButtonPanel::ButtonPanel(ContainerWindow &_parent,
                          const ButtonLook &_look) noexcept
   :parent(_parent), look(_look), selected_index(-1) {
@@ -128,8 +130,7 @@ ButtonPanel::VerticalRange(PixelRect rc, unsigned start, unsigned end) noexcept
   const unsigned max_height = n * Layout::GetMaximumControlHeight();
   const unsigned row_height = std::min(total_height, max_height) / n;
 
-  PixelRect button_rc(rc.left, rc.top, rc.left + width, rc.top + row_height);
-  rc.left += width;
+  auto button_rc = rc.CutLeftSafe(width).TopAligned(row_height);
 
   for (unsigned i = start; i < end; ++i) {
     buttons[i]->Move(button_rc);
@@ -158,9 +159,7 @@ ButtonPanel::HorizontalRange(PixelRect rc,
   const unsigned width = total_width / n;
   assert(width > 0);
 
-  PixelRect button_rc(rc.left, rc.bottom - row_height,
-                      rc.left + width, rc.bottom);
-  rc.bottom -= row_height;
+  auto button_rc = rc.CutBottomSafe(row_height).LeftAligned(width);
 
   for (unsigned i = start; i < end; ++i) {
     buttons[i]->Move(button_rc);
@@ -297,6 +296,14 @@ ButtonPanel::HideAll() noexcept
     i->Hide();
 }
 
+bool
+ButtonPanel::HasFocus() const noexcept
+{
+  return std::any_of(buttons.begin(), buttons.end(), [](const Button *b){
+    return b->HasFocus();
+  });
+}
+
 void
 ButtonPanel::SetSelectedIndex(unsigned _index) noexcept
 {
@@ -353,7 +360,7 @@ ButtonPanel::KeyPress(unsigned key_code) noexcept
     }
   }
 
-  if (selected_index >= 0 && !HasPointer()) {
+  if (selected_index >= 0) {
     if (key_code == KEY_LEFT) {
       SelectPrevious();
       return true;
